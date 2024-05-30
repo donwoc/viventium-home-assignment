@@ -12,11 +12,13 @@ namespace ViventiumTest.Api.Controllers
     {
         private readonly IWebHostEnvironment _hostEnvironment;
         private readonly ApiDbContext _apiDbContext;
+        private readonly ILogger<DataStoreController> _logger;
 
-        public DataStoreController(IWebHostEnvironment hostEnvironment, ApiDbContext apiDbContext)
+        public DataStoreController(IWebHostEnvironment hostEnvironment, ApiDbContext apiDbContext, ILogger<DataStoreController> logger)
         {
             _hostEnvironment = hostEnvironment;
             _apiDbContext = apiDbContext;
+            _logger = logger;
         }
 
         public async Task<ObjectResult> Post()
@@ -27,6 +29,7 @@ namespace ViventiumTest.Api.Controllers
                 var fileCount = HttpContext.Request.Form.Files.Count;
                 if (fileCount != 1)
                 {
+                    _logger.LogWarning($"Invalid file count: {fileCount}");
                     return BadRequest($"Please send exactly 1 file. You sent {fileCount} files.");
                 }
 
@@ -47,15 +50,18 @@ namespace ViventiumTest.Api.Controllers
 
                 if (result.Success)
                 {
+                    _logger.LogInformation($"Imported file successfully.");
                     return Ok(result);
                 }
                 else
                 {
+                    _logger.LogWarning($"Error importing file: {String.Join('*', result.Errors)}");
                     return BadRequest(result);
                 }
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error importing file");
                 return BadRequest(ex.Message);
             }
         }

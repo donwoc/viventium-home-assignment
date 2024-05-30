@@ -114,6 +114,16 @@ namespace ViventiumTest.Api.Controllers
                     Managers = []
                 };
 
+                //Get the management chain
+                var managers = await _apiDbContext.ManagerChain(companyId, employeeNumber);
+                result.Managers = managers
+                    .Select(x => new Models.DTO.EmployeeHeader
+                    {
+                        EmployeeNumber = x.EmployeeNumber,
+                        FullName = $"{x.FirstName} {x.LastName}",
+                    })
+                    .ToArray();
+
                 _logger.LogInformation($"Returning company id {companyId}, employeeNumber {employeeNumber}.");
                 return Ok(result);
             }

@@ -8,30 +8,84 @@ namespace ViventiumTest.Api.Controllers
     [ApiController]
     public class CompaniesController : ControllerBase
     {
+        private readonly ILogger<CompaniesController> _logger; 
         private readonly ApiDbContext _apiDbContext;
 
-        public CompaniesController(ApiDbContext apiDbContext)
+        public CompaniesController(ApiDbContext apiDbContext, ILogger<CompaniesController> logger)
         {
             _apiDbContext = apiDbContext;
+            _logger = logger;
         }
 
         [Route("/companies")]
         [HttpGet]
-        public async Task<IEnumerable<Models.DTO.CompanyHeader>> GetCompanies()
+        public async Task<ObjectResult> GetCompanies()
         {
-            var result = await _apiDbContext
-                .Company
-                .Select(x => new Models.DTO.CompanyHeader
-                {
-                    Id = x.CompanyId,
-                    Code = x.Code,
-                    Description = x.Description,
-                    EmployeeCount = x.Employee.Count()
-                })
-                .ToListAsync();
+            try
+            {
+                var result = await _apiDbContext
+                    .Company
+                    .Select(x => new Models.DTO.CompanyHeader
+                    {
+                        Id = x.CompanyId,
+                        Code = x.Code,
+                        Description = x.Description,
+                        EmployeeCount = x.Employee.Count()
+                    })
+                    .ToListAsync();
 
+                _logger.LogInformation($"Returning {result.Count} companies.");
 
-            return result;
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting companies");
+                return BadRequest(ex.Message);
+            }
         }
+
+        [Route("/companies/{companyId}")]
+        [HttpGet]
+        public async Task<ActionResult<Models.DTO.Company>> GetCompany(int companyId)
+        {
+            try
+            {
+                var dbCompany = await _apiDbContext
+                    .Company
+                    .Include(x => x.Employee)
+                    .SingleOrDefaultAsync(x => x.CompanyId == companyId);
+
+                if (dbCompany == null)
+                {
+                    _logger.LogWarning($"Company id {companyId} not found.");
+                    return NotFound();
+                }
+
+                var result = new Models.DTO.Company
+                {
+                    Id = dbCompany.CompanyId,
+                    Code = dbCompany.Code,
+                    Description = dbCompany.Description,
+                    EmployeeCount = dbCompany.Employee.Count(),
+                    Employees = dbCompany.Employee.Select(x => new Models.DTO.EmployeeHeader
+                    {
+                        EmployeeNumber = x.EmployeeNumber,
+                        FullName = $"{x.FirstName} {x.LastName}"
+                    }).ToArray()
+                };
+
+                _logger.LogInformation($"Returning company id {companyId}.");
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error getting company id {companyId}");  
+                return BadRequest(ex.Message);
+            }
+        }
+
+
+
     }
 }

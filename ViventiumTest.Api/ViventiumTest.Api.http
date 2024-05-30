@@ -1,6 +1,24 @@
-@ViventiumTest.Api_HostAddress = http://localhost:5135
+GET https://localhost:7020/companies
+Accept: application/json
 
-GET {{ViventiumTest.Api_HostAddress}}/weatherforecast/
+###
+
+GET https://localhost:7020/companies/1
+Accept: application/json
+
+###
+
+GET https://localhost:7020/companies/-1
+Accept: application/json
+
+###
+
+GET https://localhost:7020/companies/1/employees/E164342
+Accept: application/json
+
+###
+
+GET https://localhost:7020/companies/5/employees/E196582
 Accept: application/json
 
 ###

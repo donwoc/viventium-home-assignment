@@ -86,6 +86,42 @@ namespace ViventiumTest.Api.Controllers
         }
 
 
+        [Route("/companies/{companyId}/employees/{employeeNumber}")]
+        [HttpGet]
+        public async Task<ActionResult<Models.DTO.Employee>> GetCompanyEmployee(int companyId, string employeeNumber)
+        {
+            try
+            {
+                var dbEmployee = await _apiDbContext
+                    .Employee
+                    .Include(x => x.Company)
+                    .Include(x => x.Department)
+                    .SingleOrDefaultAsync(x => x.CompanyId == companyId && x.EmployeeNumber == employeeNumber);
 
+                if (dbEmployee == null)
+                {
+                    _logger.LogWarning($"Company id {companyId}, employeeNumber {employeeNumber} not found.");
+                    return NotFound();
+                }
+
+                var result = new Models.DTO.Employee
+                {
+                    EmployeeNumber = dbEmployee.EmployeeNumber,
+                    FullName = $"{dbEmployee.FirstName} {dbEmployee.LastName}",
+                    Email = dbEmployee.Email,
+                    Department = dbEmployee.Department.Name,
+                    HireDate = dbEmployee.HireDate,
+                    Managers = []
+                };
+
+                _logger.LogInformation($"Returning company id {companyId}, employeeNumber {employeeNumber}.");
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error getting company id {companyId}, employeeNumber {employeeNumber}");
+                return BadRequest(ex.Message);
+            }
+        }
     }
 }

@@ -8,12 +8,12 @@ namespace ViventiumTest.Api.Controllers
 {
     [Route("[controller]")]
     [ApiController]
-    public class DataStore : ControllerBase
+    public class DataStoreController : ControllerBase
     {
         private readonly IWebHostEnvironment _hostEnvironment;
         private readonly ApiDbContext _apiDbContext;
 
-        public DataStore(IWebHostEnvironment hostEnvironment, ApiDbContext apiDbContext)
+        public DataStoreController(IWebHostEnvironment hostEnvironment, ApiDbContext apiDbContext)
         {
             _hostEnvironment = hostEnvironment;
             _apiDbContext = apiDbContext;

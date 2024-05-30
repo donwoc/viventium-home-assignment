@@ -1,3 +1,6 @@
+using Microsoft.EntityFrameworkCore;
+using ViventiumTest.Api.Data;
+
 namespace ViventiumTest.Api
 {
     public class Program
@@ -7,6 +10,13 @@ namespace ViventiumTest.Api
             var builder = WebApplication.CreateBuilder(args);
 
             // Add services to the container.
+            var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
+
+            builder.Services.AddDbContext<ApiDbContext>(options =>
+            {
+                options.UseSqlServer(connectionString);
+                options.EnableSensitiveDataLogging();   
+            });
 
             builder.Services.AddControllers();
 

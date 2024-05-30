@@ -1,44 +1,46 @@
-CREATE DATABASE ViventiumTest
+create database ViventiumTest
 go
 
-USE ViventiumTest
-GO
+use ViventiumTest
+go
 
 
-CREATE TABLE Company 
+create table Company 
 (
     CompanyId int not null,
     Code      varchar(50) not null,
-    Name      varchar(50) not null,
+    Description      varchar(50) not null,
 
 
     constraint [PK_Company] primary key (CompanyId)
 )
-GO
+go
 
-CREATE TABLE Department
+create table Department
 (
     DepartmentId int not null,
+	CompanyId int not null,
     Name varchar(50) not null,
 
-    CONSTRAINT [PK_Department] PRIMARY KEY (DepartmentId)
+    constraint [PK_Department] primary key (DepartmentId),
+	constraint [FK_Department] foreign key (CompanyId) references Company on delete cascade
 )
 go
 
-CREATE TABLE Employee 
+create table Employee 
 (
     EmployeeNumber varchar(50) not null,
     CompanyId  int not null,
     FirstName  varchar(50) not null,
     LastName   varchar(50) not null,
     Email      varchar(50) not null,
-    HireDate   date null,
+    HireDate   datetime null,
     DepartmentId int not null,
     ManagerEmployeeNumber varchar(50) null,
     
-    constraint [PK_Employee] primary key (EmployeeNumber),
+    constraint [PK_Employee] primary key (EmployeeNumber, CompanyId),
     constraint [FK_Employee_Company] foreign key (CompanyId) references Company(CompanyId),
-    constraint [FK_Employee_Employee] foreign key (ManagerEmployeeNumber) references Employee(EmployeeNumber),
+    constraint [FK_Employee_Employee] foreign key (ManagerEmployeeNumber, CompanyId) references Employee(EmployeeNumber, CompanyId),
     constraint [FK_Employee_Department] foreign key (DepartmentId) references Department(DepartmentId)
 )
-GO
+go

@@ -1,14 +1,18 @@
 ﻿using LINQtoCSV;
+using Microsoft.EntityFrameworkCore;
 
 namespace ViventiumTest.Api.Lib
 {
     public class CSVImporter
     {
-        public Models.CSVImport.Result ImportFile(string filePath)
+        public async Task<Models.CSVImport.Result> ImportFileAsync(string filePath, Data.ApiDbContext apiDbContext)
         {
             try
             {
+                //Load the data from the CSV file
                 var inputRows = LoadData(filePath);
+
+                //Parse the data in to a list of Company objects, and a list of errors
                 var companies = ParseData(inputRows, out List<string> errors);
 
                 //If there are any errors, don't import the data, return the error list
@@ -17,19 +21,17 @@ namespace ViventiumTest.Api.Lib
                     return new Models.CSVImport.Result
                     {
                         Success = false,
-                        Companies = companies,
                         Errors = errors
                     };
                 }
 
                 //Add data to the database
+                await SaveDataAsync(companies, apiDbContext);
 
-
-
+                //Everything was successful, return the list of companies
                 return new Models.CSVImport.Result
                 {
                     Success = true,
-                    Companies = companies,
                     Errors = errors
                 };
             }
@@ -38,7 +40,6 @@ namespace ViventiumTest.Api.Lib
                 return new Models.CSVImport.Result
                 {
                     Success = false,
-                    Companies = [],
                     Errors = [$"Unexpected internal error: {ex.Message}"]
                 };
             }
@@ -76,6 +77,32 @@ namespace ViventiumTest.Api.Lib
                 })
                 .ToList();
 
+            //Get a list of departments for each company
+            int departmentId = 0;
+            foreach (var company in companies)
+            {
+                //We get a distinct list of departments for the company, and assign a unique department ID to each
+                var inputDepartment = inputRows
+                    .Where(ir => ir.CompanyId == company.CompanyId)
+                    .Select(ir => ir.EmployeeDepartment)
+                    .Distinct()
+                    .ToList();
+
+                company.Departments = [];
+
+                foreach (var department in inputDepartment)
+                {
+                    if (!company.Departments.Any(x => x.Name == department))
+                    {
+                        company.Departments.Add(new Models.CSVImport.Department
+                        {
+                            DepartmentId = ++departmentId,
+                            Name = department
+                        });
+                    }
+                }
+            }
+
             //Get a list of employees for each company
             foreach (var company in companies)
             {
@@ -87,15 +114,13 @@ namespace ViventiumTest.Api.Lib
                         FirstName = ir.EmployeeFirstName,
                         LastName = ir.EmployeeLastName,
                         Email = ir.EmployeeEmail,
-                        Department = ir.EmployeeDepartment,
+                        DepartmentId = company.Departments.Single(x => x.Name == ir.EmployeeDepartment).DepartmentId, //Get the department ID from the department name
                         HireDate = ir.HireDate,
                         ManagerEmployeeNumber = ir.ManagerEmployeeNumber
                     });
 
 
-                //Add employees to the only if it has a unique employee number
-                company.Employees = [];
-
+                //Add employees to the company only if it has a unique employee number
                 foreach (var employee in employees)
                 {
                     //Validate that the employee number is unique for the company
@@ -119,6 +144,94 @@ namespace ViventiumTest.Api.Lib
             }
 
             return companies;
+        }
+
+        private async Task SaveDataAsync(List<Models.CSVImport.Company> companies, Data.ApiDbContext apiDbContext)
+        {
+            //Wrap it all in a transaction to avoid partial data being saved
+            using var transaction = apiDbContext.Database.BeginTransaction();
+
+            try
+            {
+                //clean the database
+                await apiDbContext.Database.ExecuteSqlRawAsync("delete from Employee");
+                await apiDbContext.Database.ExecuteSqlRawAsync("delete from Department");
+                await apiDbContext.Database.ExecuteSqlRawAsync("delete from Company");
+
+                var dbEmployees = new List<Data.Employee>();
+
+                //Add companies to the database
+                foreach (var company in companies)
+                {
+                    var dbCompany = new Data.Company
+                    {
+                        CompanyId = company.CompanyId,
+                        Code = company.Code,
+                        Description = company.Description
+                    };
+
+                    await apiDbContext.Company.AddAsync(dbCompany);
+
+                    //add departments to the company
+                    foreach (var department in company.Departments)
+                    {
+                        var dbDepartment = new Data.Department
+                        {
+                            DepartmentId = department.DepartmentId,
+                            Name = department.Name,
+                            CompanyId = company.CompanyId
+                        };
+
+                        apiDbContext.Department.Add(dbDepartment);
+
+                        //add employees to the department
+                        var employees = company.Employees.Where(x => x.DepartmentId == department.DepartmentId).ToList();
+                        foreach (var employee in employees)
+                        {
+                            var dbEmployee = new Data.Employee
+                            {
+                                EmployeeNumber = employee.EmployeeNumber,
+                                CompanyId = company.CompanyId,
+                                DepartmentId = department.DepartmentId,
+                                FirstName = employee.FirstName,
+                                LastName = employee.LastName,
+                                Email = employee.Email,
+                                HireDate = employee.HireDate,
+                                ManagerEmployeeNumber = null, //We will update this later to avoid check of foreign key constraints and circular references
+                            };
+
+                            dbEmployees.Add(dbEmployee); //Keep a list of employees to update the manager employee number later
+                        }
+                    }
+                }
+
+                apiDbContext.Employee.AddRange(dbEmployees);
+
+                await apiDbContext.SaveChangesAsync();
+
+                //Update the manager employee number to the correct foreign key
+                foreach (var dbEmployee in dbEmployees)
+                {
+                    var managerEmployeeNumber = companies
+                        .Single(x => x.CompanyId == dbEmployee.CompanyId)
+                        .Employees
+                        .SingleOrDefault(x => x.EmployeeNumber == dbEmployee.EmployeeNumber)?
+                        .ManagerEmployeeNumber;
+                    
+                    if (!String.IsNullOrEmpty(managerEmployeeNumber))
+                        dbEmployee.ManagerEmployeeNumber = managerEmployeeNumber;
+                }
+
+                await apiDbContext.SaveChangesAsync();
+
+                //Finally, commit the transaction
+                await transaction.CommitAsync();
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                throw new Exception($"Error saving data to the database: {ex.Message}");
+            }
         }
     }
 }

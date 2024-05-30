@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System.Net;
+using ViventiumTest.Api.Data;
 using ViventiumTest.Api.Lib;
 
 namespace ViventiumTest.Api.Controllers
@@ -10,13 +11,15 @@ namespace ViventiumTest.Api.Controllers
     public class DataStore : ControllerBase
     {
         private readonly IWebHostEnvironment _hostEnvironment;
+        private readonly ApiDbContext _apiDbContext;
 
-        public DataStore(IWebHostEnvironment hostEnvironment)
+        public DataStore(IWebHostEnvironment hostEnvironment, ApiDbContext apiDbContext)
         {
             _hostEnvironment = hostEnvironment;
+            _apiDbContext = apiDbContext;
         }
 
-        public async Task<IActionResult> Post()
+        public async Task<ObjectResult> Post()
         {
             try
             {
@@ -40,7 +43,7 @@ namespace ViventiumTest.Api.Controllers
 
                 //Import the file
                 var importer = new CSVImporter();
-                var result = importer.ImportFile(postedFilePath);
+                var result = await importer.ImportFileAsync(postedFilePath, _apiDbContext);
 
                 if (result.Success)
                 {

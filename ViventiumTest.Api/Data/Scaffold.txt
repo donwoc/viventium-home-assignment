@@ -1,0 +1,1 @@
+Scaffold-DbContext -Connection "name=DefaultConnection" -Provider Microsoft.EntityFrameworkCore.SqlServer -Context ApiDbContext -NoPluralize -Force -OutputDir "Data" -Tables Company,Employee,Department

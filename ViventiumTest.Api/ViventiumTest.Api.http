@@ -22,3 +22,8 @@ GET https://localhost:7020/companies/5/employees/E196582
 Accept: application/json
 
 ###
+
+GET https://localhost:7020/companies/50/employees/E196582
+Accept: application/json
+
+###

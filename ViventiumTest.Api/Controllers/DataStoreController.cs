@@ -21,7 +21,7 @@ namespace ViventiumTest.Api.Controllers
             _logger = logger;
         }
 
-        public async Task<ObjectResult> Post()
+        public async Task<IActionResult> Post()
         {
             try
             {
@@ -62,7 +62,8 @@ namespace ViventiumTest.Api.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error importing file");
-                return BadRequest(ex.Message);
+
+                return StatusCode(StatusCodes.Status500InternalServerError);
             }
         }
     }

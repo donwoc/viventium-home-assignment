@@ -19,7 +19,7 @@ namespace ViventiumTest.Api.Controllers
 
         [Route("/companies")]
         [HttpGet]
-        public async Task<ObjectResult> GetCompanies()
+        public async Task<ActionResult<List<Models.DTO.CompanyHeader>>> GetCompanies()
         {
             try
             {
@@ -41,7 +41,8 @@ namespace ViventiumTest.Api.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting companies");
-                return BadRequest(ex.Message);
+
+                return StatusCode(StatusCodes.Status500InternalServerError);
             }
         }
 
@@ -76,15 +77,16 @@ namespace ViventiumTest.Api.Controllers
                 };
 
                 _logger.LogInformation($"Returning company id {companyId}.");
+
                 return Ok(result);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Error getting company id {companyId}");  
-                return BadRequest(ex.Message);
+                _logger.LogError(ex, $"Error getting company id {companyId}");
+
+                return StatusCode(StatusCodes.Status500InternalServerError);
             }
         }
-
 
         [Route("/companies/{companyId}/employees/{employeeNumber}")]
         [HttpGet]
@@ -125,12 +127,14 @@ namespace ViventiumTest.Api.Controllers
                     .ToArray();
 
                 _logger.LogInformation($"Returning company id {companyId}, employeeNumber {employeeNumber}.");
+
                 return Ok(result);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, $"Error getting company id {companyId}, employeeNumber {employeeNumber}");
-                return BadRequest(ex.Message);
+
+                return StatusCode(StatusCodes.Status500InternalServerError);
             }
         }
     }

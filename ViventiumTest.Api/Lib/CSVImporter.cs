@@ -28,7 +28,7 @@ namespace ViventiumTest.Api.Lib
                 //Add data to the database
                 await SaveDataAsync(companies, apiDbContext);
 
-                //Everything was successful, return the list of companies
+                //Everything was successful
                 return new Models.CSVImport.Result
                 {
                     Success = true,
